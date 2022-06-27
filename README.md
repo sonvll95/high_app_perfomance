@@ -1,4 +1,5 @@
 
+![3-mobile-app-performance-issues-you-cant-ignore-header](https://user-images.githubusercontent.com/90396637/175884264-2209dd41-0dd2-423c-b784-2a79ebecf5ef.jpeg)
 
 Chào mừng các bạn tới bài viết **High Performance iOS Apps** và cùng mình tìm hiểu XCode Instrument để optimize sourcecode đạt hiệu suất cao hơn.
 
