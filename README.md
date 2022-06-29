@@ -209,7 +209,7 @@ Trong phần này, mình sẽ giới thiệu với các bạn:
 
 ### Bắt đầu
 
-Download sample project mình ghim ở đầu bài nhé. Project này sử dụng Flickr API để tìm kiếm hình ảnh. Để sử dụng được api thì các bạn generate API key theo step bên dưới nhé:
+Download sample project mình ghim ở đầu bài nhé (starter.zip). Project này sử dụng Flickr API để tìm kiếm hình ảnh. Để sử dụng được api thì các bạn generate API key theo step bên dưới nhé:
 
 * Tạo tài khoản và login tại đây https://identity.flickr.com
 * Tiếp theo, vào Flickr API Explorer
