@@ -226,19 +226,27 @@ https://www.flickr.com/services/rest/?method=flickr.photos.search
 
 Chạy và search vài keyword thì bạn sẽ thấy màn hình như thế này:
 
+![1](https://user-images.githubusercontent.com/90396637/176335296-be503f55-b536-4a53-80f2-7cfc00af473d.png)
+
 Có thể bạn nghĩ app đã chạy ok tuy nhiên sau đây chúng ta cùng tìm hiểu xem Xcode Instrument có thể cải thiện những gì nhé
 
 ## TimeProfiler
 
 Đây là hình ảnh của TimeProfiler
 
+![2](https://user-images.githubusercontent.com/90396637/176335340-7f3f2ab2-ef2d-4bc1-a2ef-d22d2c137ec9.png)
+
 Màn hình ở trên được gọi là **CallTree**. CallTree sẽ show thời gian excution các method trong app. Mỗi hàng là một phương thức khác nhau, TimeProfiler sẽ ước tính thời gian cho mỗi method bằng cách đếm số lần dừng lại ở mỗi method
 
 Để mở được TimeProfiler từ Xcode thì các bạn chọn **Product > Profile > TimeProfiler** hoặc ấn **Command - I** . 
 
+![3](https://user-images.githubusercontent.com/90396637/176335415-975c6cdf-dc60-429a-bb55-5790d560e5e9.png)
+
 Tiếp theo click nút Record ở góc trái trên cùng để bắt đầu launch app. Thực hiện search và scroll màn hình result bạn sẽ thấy nó bị giật và không hề mượt mà. Bây giờ thì cùng tìm nguyên nhân và fix nó nhé.
 
 Mở TimeProfiler và bạn sẽ thấy màn hình bên dưới:
+
+![4](https://user-images.githubusercontent.com/90396637/176335476-2e0b7642-582f-41c0-8382-c8973a58364b.png)
 
 1. Recording controls: Bao gồm các nút stop và start
 2. Run timer: Bộ đếm sẽ đếm số lần đã chạy. Như ở trên hình là 2 lần.
@@ -248,11 +256,15 @@ Mở TimeProfiler và bạn sẽ thấy màn hình bên dưới:
 
 Sort lại cột Weight để tìm xem method nào đang tốn nhiều thời gian nhất. Bạn sẽ thấy row Main Thread đang tốn khá nhiều, click vào dấu mũi tên > để xem chi tiết. Bạn lại thấy method **Tonal Filter** bên trong MainThread đang cũng tốn rất nhiều thời gian. Click vào dấu mũi tên > bạn sẽ thấy nó được refer tới `(_:cellForItemAt:)` trong file `SearchResultsViewController.swift`
 
+![5](https://user-images.githubusercontent.com/90396637/176335816-cbac23ad-85dd-4255-a109-484f402b3f04.png)
+
 Rõ ràng vấn đề chúng ta gặp phải là tạo UIImage với filter tonal tốn nhiều thời gian và chúng ta lại gọi nó trong hàm `collectionView(_:cellForItemAt:).` sẽ được gọi mỗi khi chúng ta scroll, đó là lý do mỗi lần scroll thì app sẽ rất giật.
 
 Solve: Do apply UIImage với filter tonal là một task nặng nên chúng ta sẽ đưa nó xuống background thread `DispatchQueue.global().async`. Tiếp theo cache lại từng ảnh nếu nó đã được filter. 
 
 Ok bắt đầu sửa thôi, click vào icon và XCode sẽ đưa bạn tới đúng chỗ cần sửa
+
+![6](https://user-images.githubusercontent.com/90396637/176335939-7d98b3e2-2513-4683-82f8-d3e5353d617e.png)
 
 Bên trong hàm `collectionView(_:cellForItemAt:)`, replace đoạn code `loadThumbnail(for:completion:) ` bằng: 
 
@@ -317,7 +329,7 @@ func loadThumbnail(
 
 Chạy **Command-I** để run TimeProfiler. Thực hiện search một số keyword, app đã có thể scroll mượt mà hơn. App đã thực hiện filter ở background và cache lại kết quả. Bạn có thể thấy rất nhiều `dispatch_worker_threads` trong **CallTree**.
 
-Tới đây thì bạn đã nghĩ app đã ổn rồi nhỉ. Not yet!
+Tới đây thì bạn nghĩ app đã ổn rồi nhỉ. Not yet!
 
 ## Allocation
 
@@ -327,9 +339,16 @@ Vẫn còn một số bug tiềm ẩn trong project. Có thể bạn đã biết
 * **Unbounded memory growth**: Điều này xảy ra khi bộ nhớ cấp phát liên tục và không bao giờ deallocated, dẫn tới out of memory. Trong iOS khi xảy ra vấn đề này thì hệ thống sẽ terminate app của bạn.
 
 Bắt đầu giống TimeProfiler, các bạn dùng **Command-I** sau đó chọn **Allocations**. Bạn sẽ thấy giao diện khá giống với **TimeProfiler**.
+
+![7](https://user-images.githubusercontent.com/90396637/176336037-8435da74-f08b-421d-8740-7de9bfa0dc5a.png)
+
 Ấn vào button record và chú ý phần **All Heap and Anonymous VM**, quay lại app và thực hiện search một số keyword
 
+![8](https://user-images.githubusercontent.com/90396637/176336147-81fe71fa-d9e9-4bd8-847c-405eac095f29.png)
+
 Bạn sẽ nhận thấy biểu đồ trong **All Heap and Anonymous VM** đang tăng lên. Điều này cho thấy app đang phân bổ bộ nhớ (Allocation). Tính năng Allocations sẽ giúp bạn tìm ra **Unbounded memory growth**.
+
+![9](https://user-images.githubusercontent.com/90396637/176336454-4156dd7b-1b5a-49c5-a361-3150471a9712.png)
 
 ### Simulating a Memory Warning
 
@@ -339,6 +358,8 @@ Quay trở Allocations chọn phần **Growth**, bạn sẽ thấy rất nhiều
 
 Khá easy, chọn **Growth** header để sort lại theo kích thước. Phần nặng nhất chắc chắn sẽ ở đầu tiên. Bạn sẽ thấy có một label tên là **VM: CoreImage**.
 Click để xem detail trong **Extended Detail**.
+
+![10](https://user-images.githubusercontent.com/90396637/176336627-d8e44f26-45be-4ae0-b004-8ef71cc02d4c.png)
 
 Phần màu xám là các thư viện của hệ thống, còn phần màu đen là code của bạn.
 Tới đây bạn lại thấy `collectionView(_:cellForItemAt:)`. Khá quen thuộc đúng không nào?. Double click và Instrument sẽ đưa bạn tới file source code đó. Nó gọi tới `set(_:forKey:)` trong `ImageCache.shared`. Nhớ lại thì method này sẽ cache lại ảnh để tái sử dụng. Đó có thể là vấn đề!
@@ -370,6 +391,8 @@ init() {
 
 Đoạn code trên sẽ lắng nghe event UIApplication.didReceiveMemoryWarningNotification và sẽ thực hiện code trong block. Tất cả ảnh trong dictionary sẽ bị remove. Điều này đảm bảo không có dữ liệu trong images và nó sẽ bị deallocated. Chạy lại và nhìn vào graph, bạn sẽ mức độ sử dụng bộ nhớ sẽ giảm đi sau khi nhận memory warning.
 
+![11](https://user-images.githubusercontent.com/90396637/176336767-d1738e4a-7f0f-4537-83bc-baace60c3ec4.png)
+
 Ok, vậy là bạn đã giải quyết được thêm 1 vấn đề nữa. Tuy nhiên vẫn còn một loại memory leak cần được giải quyết.
 
 ## **Strong Reference Cycle**
@@ -378,7 +401,11 @@ Như đã nói ở trên, Strong Reference Cycle xảy ra khi 2 object cùng gi�
 
 Chọn `Product` > `Profile` > `Allocations`.
 
+![12](https://user-images.githubusercontent.com/90396637/176336826-6a22183d-1233-44d5-9aef-7651a546ef64.png)
+
 Lần này chúng ta sẽ không dùng generation để phân tích nữa. Thay vào đó chúng ta sẽ nhìn vào những object tồn tại trong bộ nhớ. Click nút **Record**, sau đó filter theo tên ứng dụng. Ở đây là **InstrumentsTutorial**.
+
+![13](https://user-images.githubusercontent.com/90396637/176336868-c93b665c-b5b7-4a13-9a62-38aa35c43919.png)
 
 Sẽ có 2 cột đáng chú ý đó là Persistent và Transient. Persistent hiển thị số đối tượng đang tồn tại, còn Transient hiển thị số lượng đối tượng đã deallocated. Các đối tượng trong Persistent thì sử dụng bộ nhớ còn Transient thì không.
 
@@ -390,9 +417,9 @@ Trở lại app, thực hiện search và nhìn kết quả. Bạn sẽ thấy k
 
 Bây giờ, ấn nút back trên app. Theo lý thuyết thì **SearchResultsViewController** sẽ bị deallocated, tuy nhiên nó vẫn hiển thị 1 Allocations. Thực hiện thêm 2 lần nữa, bây giờ kết quả là 3 Allocations. Xem ra là đã xảy ra Strong Reference Cycle ở đâu đó.
 
+![14](https://user-images.githubusercontent.com/90396637/176336973-09ff7974-1a19-42d2-9d5a-cd260108dde7.png)
+
 Có 2 chỗ đáng nghi đó là **SearchResultsViewController** và **SearchResultsCollectionViewCells**. Có thể đã xảy ra reference cycle giữa 2 class này.
-
-
 
 ## **Getting Visual**
 
@@ -401,6 +428,8 @@ Trong phần này, chúng ta sẽ sử dụng **Visual Memory Debugger** đượ
 Thoát Instruments tool.
 
 Trước khi start Visual Memory Debugger, cần config lại một số option trong Xcode Scheme. Chọn Edit Scheme > Diagnostic. Chọn checkbox **Malloc Stack** chọn option **Live Allocations Only**.
+
+![15](https://user-images.githubusercontent.com/90396637/176337020-ae5de85e-84ef-473d-acd1-0aa37e7b9d97.png)
 
 Start app và thực hiện search. Để bật **Visual Memory Debugger** các bạn làm step sau: 
 
@@ -411,6 +440,8 @@ Start app và thực hiện search. Để bật **Visual Memory Debugger** các 
 
 Trong ảnh thì Visual Memory Debugger hiển thị các thông tin sau:
 
+![16](https://user-images.githubusercontent.com/90396637/176337148-739df0fc-30d6-4847-a14e-b0f3cff83f6e.png)
+
 HeapContent (Debug navigator pane): Show danh sách các instance allocated trong memory tại thời điểm pause app. 
 
 Memory Graph: Show hình ảnh đại diện các đối tượng trong bộ nhớ. Các mũi tên giữa các đối tượng đại diện cho các tham chiếu (strong && weak reference)
@@ -419,12 +450,17 @@ Memory Inspector: Bao gồm các chi tiết như tên class, tham chiếu mạnh
 
 Trong phần panel Debug navigator, các bạn chọn **SearchResultsViewController** và unfold mũi tên sẽ thấy từng instance của nó
 
+![17](https://user-images.githubusercontent.com/90396637/176337207-98332f6d-e207-45e7-ad91-1e8682ac4889.png)
+
 Các mũi tên cùng trỏ tới **SearchResultsViewController**. Có vẻ như có vài closure cùng tham chiếu tới một ViewController instance. Chọn một trong các mũi tên để hiển thị thêm thông tin
+
+![18](https://user-images.githubusercontent.com/90396637/176337686-0fad5894-862b-4e88-b1b4-f7872d0757cc.png)
 
 Trong Memory Inspector bạn có thể thấy tham chiếu giữa closure và **SearchResultsViewController** là strong reference. Nếu bạn chọn **SearchResultsCollectionViewCell** và closure của nó thì nó cũng đang là một strong reference. Bạn có thể thấy tên của closure name đó `heartToggleHandler` được define trong **SearchResultsCollectionViewCell**.
 
-Chọn 1 instance của **SearchResultsCollectionViewCell**
- để thấy chi tiết hơn trong **Memory Inspector**. Tiếp tục click chi tiết trong phần backtrace bạn sẽ thấy nó dẫn tới `collectionView(_:cellForItemAt:)`. Khi bạn di chuột vào thì sẽ xuất hiện một dấu mũi tên nhỏ. Click vào mũi tên và Xcode sẽ show đoạn mã code
+![19](https://user-images.githubusercontent.com/90396637/176337725-3ed5c435-4c0a-4776-bb8a-f430a284753b.png)
+
+Chọn 1 instance của **SearchResultsCollectionViewCell** để thấy chi tiết hơn trong **Memory Inspector**. Tiếp tục click chi tiết trong phần backtrace bạn sẽ thấy nó dẫn tới `collectionView(_:cellForItemAt:)`. Khi bạn di chuột vào thì sẽ xuất hiện một dấu mũi tên nhỏ. Click vào mũi tên và Xcode sẽ show đoạn mã code
  
 Bạn có thể thấy đoạn code trong `collectionView(_:cellForItemAt:)`:
 
